@@ -14,12 +14,12 @@ from math import pi
 def lab1_solution_run():
     plt.close("all")
     lab1_solution = Lab1Solution()
-    # lab1_solution.question1()
+    lab1_solution.question1()
     lab1_solution.question2()
     lab1_solution.questions3_and_4()
 
     # Uncomment this line below to keep the figure after the last question finished
-    plt.show() 
+    # plt.show() 
 
 # ---------------------------------------------------------------------------------------#
 class Lab1Solution:
@@ -90,7 +90,7 @@ class Lab1Solution:
             plt.imshow(self.img)
 
             car1_tr = SE2(300, 550, 0)     # initial pose of car 1
-            car2_tr = SE2(16, 16, 90)     # initial pose of car 2
+            car2_tr = SE2(300, 125, 0)     # initial pose of car 2
 
             # For distance plot (i.e. question 4)
             if question == 4:
