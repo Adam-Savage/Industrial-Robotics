@@ -1,14 +1,23 @@
 # Require libraries
 import numpy as np
 import matplotlib.pyplot as plt
-import keyboard
+from pynput import keyboard
 import time
 from spatialmath.base import *
 from spatialmath import SE3
 from roboticstoolbox import DHLink, DHRobot
 
+# import threading
+
 # Useful variables
 from math import pi
+
+# stop_teach = False
+
+# def wait_for_enter():
+#     global stop_teach
+#     input("Press Enter to continue...\n")
+#     stop_teach = True
 
 # ---------------------------------------------------------------------------------------#
 def lab3_starter():
@@ -60,10 +69,16 @@ def lab3_starter():
     input("Enter to play with teach and then hit Enter again to finish\n")
     plt.close()
     fig = my_robot.teach(my_robot.q, block= False)
-    while True:
-        if keyboard.is_pressed('enter'):
-            break
+
+    while plt.get_fignums():
         fig.step(0.05)
+        plt.pause(0.05)
+        if plt.waitforbuttonpress(timeout=0.05):
+            break
+    # while True:
+    #     if input():
+    #         break
+    #     fig.step(0.05)
 
     t_f1 = 0.0 # Total time for forward kinematic calculation using fkine
     t_f2 = 0.0 # Total time for forward kinematic calculation doing manually

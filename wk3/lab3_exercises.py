@@ -3,7 +3,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import time
-import keyboard
+from pynput import keyboard
 import swift
 from scipy import linalg
 from spatialmath.base import plotvol3
@@ -17,6 +17,16 @@ from ir_support.robots import DensoVS060
 # Useful variables
 from math import pi
 
+import threading
+
+# Global flag
+enter_pressed = False
+
+def on_press(key):
+    global enter_pressed
+    if key == keyboard.Key.enter:
+        enter_pressed = True
+
 class Lab3Exercises:
     def __init__(self):
         print("Lab 3 Exercises Starting Point")
@@ -25,50 +35,84 @@ class Lab3Exercises:
         # 1.1) Use the picture of the robot to determine the DH parameters
         # Hint: Use the standard DH convention. Remember, all units should be in metres.
         # Use DHLink(d=..., a=..., alpha=..., offset=..., qlim=[lower, upper]) for each link
+        ###Robot 1
+        link1 = DHLink(d=1, a=0, alpha=pi/2, qlim =[-pi, pi], offset=0)
+        link2 = DHLink(d=0, a=1, alpha=0, qlim=[-pi, pi], offset=0)
+        link3 = DHLink(d=0, a=1, alpha=0, qlim=[-pi, pi], offset=0)
 
         # 1.2) Generate the robot model using your DH parameters
         # Use: robot = DHRobot([link1, link2, link3], name="Robot1")
         # Then set q = np.zeros(robot.n) or use robot.qz if available
         # Visualise the robot using robot.plot(q, limits=[-2, 2, -2, 2, -2, 2])
+        robot = DHRobot([link1, link2, link3], name="Robot1")
+        q = np.zeros(robot.n)
+        robot.plot(q, limits=[-2, 2, -2, 2, -2, 2])
 
         # 1.3) Use the teach window to manually update joint angles and verify visually
-        # fig = robot.teach(q, block=False); while not keyboard.is_pressed('enter'): fig.step(0.05)
+        fig = robot.teach(q, block=False); 
+        # while not keyboard.is_pressed('enter'): fig.step(0.05)
+        while not enter_pressed: fig.step(0.05)
 
         # 1.4) Capture the joint configuration into a variable q after adjusting in the teach window
-        # q = robot.q
+        q = robot.q
 
-        # 1.5) Use forward kinematics to calculate the end effector transform: T = robot.fkine(q)
-        # print("End effector pose:\n", T)
+        # 1.5) Use forward kinematics to calculate the end effector transform: 
+        T = robot.fkine(q)
+        print("End effector pose:\n", T)
 
         # 1.6) Try one or more of the inverse kinematics solvers in RobotKinematics.py, in this form "result = robot.ikine(T)"
-        # try:
-        #     result = robot.ikine_LM(T)  # or ikine_GN, ikine_NR, ikine_LM etc.
-        #     if result.success:
-        #         q_ik = result.q
-        #         print("1.6) IK solution found:\n", q_ik)
-        #    
-        #         # Verify solution
-        #         T_check = robot.fkine(q_ik)
-        #         print("1.6) Forward kinematics of IK result:\n", T_check)
-        #
-        #         # Optional: compare position error
-        #         position_error = np.linalg.norm(T.t - T_check.t)
-        #         print(f"1.6) Position error: {position_error:.6f}")
-        #     else:
-        #         print("1.6) IK failed. Reason:", result.reason)
-        # except Exception as e:
-        #     print("1.6) IK solver crashed with error:", e)
+        try:
+            result = robot.ikine_LM(T)  # or ikine_GN, ikine_NR, ikine_LM etc.
+            if result.success:
+                q_ik = result.q
+                print("1.6) IK solution found:\n", q_ik)
+           
+                # Verify solution
+                T_check = robot.fkine(q_ik)
+                print("1.6) Forward kinematics of IK result:\n", T_check)
+        
+                # Optional: compare position error
+                position_error = np.linalg.norm(T.t - T_check.t)
+                print(f"1.6) Position error: {position_error:.6f}")
+            else:
+                print("1.6) IK failed. Reason:", result.reason)
+        except Exception as e:
+            print("1.6) IK solver crashed with error:", e)
 
         # 1.7) Get the Jacobian matrix at q using robot.jacob0(q)
         # If using a 3-link robot, consider only the first three rows (translational part)
+        J = robot.jacob0(q)
+        print("Jacobian matrix J:\n", J)
 
         # 1.8) Try to invert the Jacobian using linalg.inv(J)
         # Do this with both full J and reduced J[0:3, 0:3]. What do you observe?
+        # try:
+        #     J_inv = linalg.inv(J)
+        #     print("Inverse Jacobian J_inv:\n", J_inv)
+        #     J_reduced_inv = linalg.inv(J[0:3, 0:3])
+        #     print("Reduced Inverse Jacobian J_reduced_inv:\n", J_reduced_inv
+        #     )
+        # except linalg.LinAlgError as e:
+        #     print("Error inverting Jacobian:", e)
+        #     J_inv = None
+        #     J_reduced_inv = None
+        # Note: If the Jacobian is singular or non-invertible, this will raise an error.
 
         # 1.9) Find any joint configurations where the Jacobian becomes non-invertible
         # (e.g. all joints set to 0). What happens?
+        # q_singular = np.zeros(robot.n)
+        # J_singular = robot.jacob0(q_singular)
+        # print("Jacobian at singular configuration (all zeros):\n", J_singular)
+        # try:
+        #     J_singular_inv = linalg.inv(J_singular)
+        #     print("Inverse Jacobian at singular configuration:\n", J_singular_inv)
+        # except linalg.LinAlgError as e:
+        #     print("Error inverting Jacobian at singular configuration:", e)
+        #     J_singular_inv = None
+        # Note: The Jacobian at this configuration is singular, meaning it cannot be inverted.
 
         # 1.10) Use robot.vellipse(q).plot() to visualise how fast the end effector can move
+        robot.vellipse(q).plot()
 
         # 1.11) Observe the velocity ellipse when the Jacobian is non-invertible.
         # What does the shape tell you about mobility at this configuration?
@@ -76,6 +120,19 @@ class Lab3Exercises:
 
     def question2(self):
         # 2.1) Use the Denso VM-6083D-W datasheet to derive the DH parameters
+        link1 = DHLink(d=0.2, a=0.2, alpha=pi/2, qlim =[-pi, pi], offset=0)
+        link2 = DHLink(d=0.2, a=0.2, alpha=0, qlim=[-pi, pi], offset=0)
+        link3 = DHLink(d=0, a=0.2, alpha=0, qlim=[-pi, pi], offset=0)
+        link4 = DHLink(d=0, a=0.1, alpha=pi/2, qlim=[-pi, pi], offset=0)
+        link5 = DHLink(d=0, a=0, alpha=-pi/2, qlim=[-pi, pi], offset=0)
+
+        robot = DHRobot([link1, link2, link3], name="Robot1")
+        q = np.zeros(robot.n)
+        robot.plot(q, limits=[-2, 2, -2, 2, -2, 2])
+
+        fig = robot.teach(q, block=False); 
+
+        while not enter_pressed: fig.step(0.05)
 
         # 2.2) Add joint limits based on datasheet specifications
 
@@ -149,7 +206,11 @@ class Lab3Exercises:
         pass
 
 if __name__ == "__main__":
+    # Start listener in background
+    listener = keyboard.Listener(on_press=on_press)
+    listener.start()
+
     lab = Lab3Exercises()
     # lab.question1()
-    # lab.question2()
+    lab.question2()
     # lab.question3()
