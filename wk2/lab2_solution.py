@@ -2,10 +2,10 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import time
-import keyboard
+from pynput import keyboard
 from scipy import linalg
 from spatialmath import SE3
-from spatialmath.base import transl, trotx, troty, tr2rpy, r2q
+from spatialmath.base import transl, trotx, troty, tr2rpy, r2q, trotz
 from roboticstoolbox import DHLink, DHRobot
 from ir_support import RobotCow, tranimate_custom, place_fence, orthogonalize_rotation
 
@@ -16,12 +16,19 @@ def lab2_solution_run():
     plt.close("all")
     input("Press Enter to begin\n")
     lab2_solution = Lab2Solution()
-    lab2_solution.question1()
-    lab2_solution.question1_as_for_loop()
+    # print("1")
+    # lab2_solution.question1()
+    # print("2")
+    # lab2_solution.question1_as_for_loop()
+    # print("3") # this one is fucked (just wait and itll load)
     lab2_solution.question2()
-    lab2_solution.question3()
-    lab2_solution.question3_point8()
+    # print("4") # this one is also fucked (same as above)
+    # lab2_solution.question3()
+    # print("5")
+    # lab2_solution.question3_point8()
+    print("6")
     lab2_solution.question4()
+    print("7")
 
 
 # ---------------------------------------------------------------------------------------#
@@ -119,37 +126,43 @@ class Lab2Solution:
 
     # ---------------------------------------------------------------------------------------#
     def question2(self):
-        """
-        Question 2 (done before 1 so it can keep this all in one file)
-        """
-        # 2.1 Create an instance of the cow herd with default parameters
-        cow_herd = RobotCow()
-        # 2.2 Check how many cows there are
-        print("Number of cows: ", cow_herd.num_cows)
-        # 2.3 Plot on single iteration of the random step movement
-        input("Press Enter to visualize a single step\n")
-        cow_herd.plot_single_random_step()
+
+        cow_herd = RobotCow(1)
+        
+        cow_herd.cow_list[0]['base'] @ trotz(39 * pi/180)
+
+
+        # """
+        # Question 2 (done before 1 so it can keep this all in one file)
+        # """
+        # # 2.1 Create an instance of the cow herd with default parameters
+        # cow_herd = RobotCow()
+        # # 2.2 Check how many cows there are
+        # print("Number of cows: ", cow_herd.num_cows)
+        # # 2.3 Plot on single iteration of the random step movement
+        # input("Press Enter to visualize a single step\n")
+        # cow_herd.plot_single_random_step()
         plt.pause(0.01)
-        input('Finished question 2.3, press Enter to continue\n')
-        # 2.4 Create a new instance with 10 cows
-        plt.close("all")
-        cow_herd = RobotCow(10)
-        plt.pause(0.01)
-        # 2.5 Test many random steps
-        num_steps = 100
-        delay = 0.01
-        cow_herd.test_plot_many_step(num_steps,delay)
-        input("Press Enter to continue\n")
-        # 2.6 Query the location of the 2nd cow
-        try:
-            print("Location of 2nd cow:\n", SE3(cow_herd.cow_list[1]['base']))
-        except ValueError: 
-            # This will be raised if the SE3 doesn't recognise the input 
-            # as a valid SE3 matrix due to accumulation error of the matrix multiplication process. 
-            # Specifically, the rotation matrix of the input doesn't keep its orthogonality.
-            # We will try to orthogonalize the rotation matrix of the input
-            cow_herd.cow_list[1]['base'][:3,:3] = orthogonalize_rotation(cow_herd.cow_list[1]['base'][:3,:3])
-            print("Fix orthogonality error. Location of 2nd cow:\n", SE3(cow_herd.cow_list[1]['base']))
+        # input('Finished question 2.3, press Enter to continue\n')
+        # # 2.4 Create a new instance with 10 cows
+        # plt.close("all")
+        # cow_herd = RobotCow(10)
+        # plt.pause(0.01)
+        # # 2.5 Test many random steps
+        # num_steps = 100
+        # delay = 0.01
+        # cow_herd.test_plot_many_step(num_steps,delay)
+        # input("Press Enter to continue\n")
+        # # 2.6 Query the location of the 2nd cow
+        # try:
+        #     print("Location of 2nd cow:\n", SE3(cow_herd.cow_list[1]['base']))
+        # except ValueError: 
+        #     # This will be raised if the SE3 doesn't recognise the input 
+        #     # as a valid SE3 matrix due to accumulation error of the matrix multiplication process. 
+        #     # Specifically, the rotation matrix of the input doesn't keep its orthogonality.
+        #     # We will try to orthogonalize the rotation matrix of the input
+        #     cow_herd.cow_list[1]['base'][:3,:3] = orthogonalize_rotation(cow_herd.cow_list[1]['base'][:3,:3])
+        #     print("Fix orthogonality error. Location of 2nd cow:\n", SE3(cow_herd.cow_list[1]['base']))
 
         input('Finished Question 2, press Enter to continue\n')
 
@@ -253,13 +266,14 @@ class Lab2Solution:
         plt.close()
 
         # 4.1 and 4.2: Define the DH Parameters to create the Kinematic model
-        link1 = DHLink(d= 0, a= 1, alpha= 0, qlim= [-pi, pi]) 
+        link1 = DHLink(d= 0.5, a= 0.3, alpha= pi/2, qlim= [-pi, pi]) 
         link2 = DHLink(d= 0, a= 1, alpha= 0, qlim= [-pi, pi]) 
-        link3 = DHLink(d= 0, a= 1, alpha= 0, qlim= [-pi, pi]) 
-        robot = DHRobot([link1, link2, link3], name= 'myRobot')
+        link3 = DHLink(d= 0, a= 0.2, alpha= -pi/2, qlim= [-pi, pi]) 
+        link4 = DHLink(d= 0.7, a= 0, alpha= pi/2, qlim= [-pi, pi])
+        robot = DHRobot([link1, link2, link3, link4], name= 'myRobot')
         workspace = [-3, 3, -3, 3, -3, 3]
         # q =  np.zeros([1,3]) # Initial joint angles = 0
-        q = np.array([pi/4, -pi/4, pi/4])  # Initial joint angles as shown in Canvas
+        q = np.array([-0.7506, 0.5895, -1.8286, 2.5971])  # Initial joint angles as shown in Canvas
 
         try:
             options = {"eelength": 1.0, "jointaxislength": 0.5}
@@ -276,7 +290,8 @@ class Lab2Solution:
 
         # 4.4 Get the current joint angles based on the position in the model
         while True:
-            if keyboard.is_pressed('enter'):
+            # if keyboard.is_pressed('enter'):
+            if input():
                 break
             print("q = ", robot.q)
             fig.step(0.05)

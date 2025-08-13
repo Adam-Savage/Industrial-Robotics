@@ -14,8 +14,8 @@ from math import pi
 def lab1_solution_run():
     plt.close("all")
     lab1_solution = Lab1Solution()
-    lab1_solution.question1()
-    lab1_solution.question2()
+    # lab1_solution.question1()
+    # lab1_solution.question2()
     lab1_solution.questions3_and_4()
 
     # Uncomment this line below to keep the figure after the last question finished
@@ -58,7 +58,7 @@ class Lab1Solution:
         car1_move_tr = SE2((2 * pi * self.RADIUS_OUTER)/total_steps, 0, 0)
         car1_turn_tr = SE2(0, 0, -2*pi/total_steps)
 
-        for _ in range(total_steps): 
+        for _ in range(96): 
             # Update figure
             plt.cla()  # Clear the current axes
             plt.imshow(self.img)
@@ -72,6 +72,8 @@ class Lab1Solution:
 
             plt.draw()
             plt.pause(0.01)
+
+            print(f"After {96} transform iterations, T = \n{car1_tr}")
 
             # Move to the next question if prompted
             if self.next_question:
@@ -90,7 +92,7 @@ class Lab1Solution:
             plt.imshow(self.img)
 
             car1_tr = SE2(300, 550, 0)     # initial pose of car 1
-            car2_tr = SE2(300, 125, 0)     # initial pose of car 2
+            car2_tr = SE2(16, 16, 0)     # initial pose of car 2
 
             # For distance plot (i.e. question 4)
             if question == 4:
@@ -107,8 +109,8 @@ class Lab1Solution:
             dist = np.zeros(total_steps)
 
             for i in range(total_steps): 
-                car1_tr = ir.clean_SE2(car1_tr * car1_move_tr * car1_turn_tr)
-                car2_tr = ir.clean_SE2(car2_tr * car2_move_tr * car2_turn_tr)
+                # car1_tr = ir.clean_SE2(car1_tr * car1_move_tr * car1_turn_tr)
+                # car2_tr = ir.clean_SE2(car2_tr * car2_move_tr * car2_turn_tr)
 
                 print("car1_to_2_tr = \n", car1_tr.inv() * car2_tr)
                 print("car2_to_1_tr = \n", car2_tr.inv() * car1_tr)
