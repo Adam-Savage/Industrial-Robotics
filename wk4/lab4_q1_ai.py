@@ -28,6 +28,8 @@ class Lab4Exercises:
             input()
         except EOFError:
             pass
+        except KeyboardInterrupt:
+            pass
         self.stop_event.set()
 
 
@@ -41,7 +43,7 @@ class Lab4Exercises:
         link1 = DHLink(d=0, a=1, alpha=0, qlim=[-pi, pi])
         link2 = DHLink(d=0, a=1, alpha=0, qlim=[-pi, pi])
         link3 = DHLink(d=0, a=1, alpha=0, qlim=[-pi, pi])
-        robot = DHRobot([link1, link2, link3], name= 'my_robot')
+        robot = DHRobot([link1, link2, link3], name='my_robot')
 
         # Give the robot a cylinder mesh (links) to display in Swift environment
         cyl_viz = CylindricalDHRobotPlot(robot, cylinder_radius=0.05, color="#3478f6")
@@ -50,7 +52,6 @@ class Lab4Exercises:
         # 1.2) Rotate the base around the X axis so the Z axis faces down ways
         # Hint: We can use the 'trotx' function to create a 4x4 transform with only rotation about X (no translation)
         # Hint: If the Z-axis is originally facing up, what amount of rotation is needed to have it face down (in radians)?
-
         robot.base = trotx(pi)
 
         # 1.3) Set workspace, scale and initial joint state, then plot and teach
@@ -58,42 +59,38 @@ class Lab4Exercises:
         # Plot the robot in the workspace at the defined joint states with: robot.plot(q, limits= workspace)
         # Create 'teach mode' using robot.teach(q, limits=workspace, block=False). You need to use a while loop
         # with an exit condition and the update step 'fig.step(timestep)' to use the teach mode until no longer desired.
-        q = np.zeros(robot.n)  # Initial joint state
-        workspace = [-2, 2, -2, 2, -1, 1]  # Workspace limits
+        q = np.zeros(robot.n)
+        workspace = [-3, 3, -3, 3, -1, 1]
         robot.plot(q, limits=workspace)
         input("Enter to teach and hit Enter again to continue\n")
         plt.close()
-        fig = robot.teach(q, limits= workspace, block = False)
+        fig = robot.teach(q, limits=workspace, block=False)
 
-        # 1.4) Move the robot around with “teach” and observe that there is no 
+        # 1.4) Move the robot around with "teach" and observe that there is no 
         # way to affect the Z, roll or pitch values, no matter what joint value you choose.
         # Continuously update the teach figure while it is being used (every 0.05s)
-
-        # input_thread = threading.Thread(target=self.wait_for_enter)
-        # input_thread.start()
-        # while not self.stop_event.is_set():
-        #     fig.step(0.05)
-
-        # self.stop_event.clear()
-        # input_thread.join()
-
+        
+        # Alternative approach for macOS - use a timeout-based loop instead of threading
         print("Use the teach interface to move the robot around.")
         print("Close the teach window or press Ctrl+C in terminal when done.")
-
+        
         try:
+            # Keep the teach interface running with periodic updates
             start_time = time.time()
             while True:
                 try:
                     fig.step(0.05)
                     time.sleep(0.05)
                     
-                    if time.time() - start_time > 1:
-                        plt.pause(0.01)
+                    # Check if window is still open (basic check)
+                    if time.time() - start_time > 1:  # After 1 second, check periodically
+                        plt.pause(0.01)  # This will raise an exception if window is closed
                         
                 except KeyboardInterrupt:
                     print("\nStopping teach mode...")
                     break
                 except:
+                    # Window might have been closed
                     print("\nTeach window closed or error occurred, continuing...")
                     break
                     
@@ -107,20 +104,30 @@ class Lab4Exercises:
         # about the yaw angle (if it's a pen where the Z axis is rotating, it doesn't affect the drawing result.
 
         # 1.6) Get a joint state solution for the end effector at [-0.75,-0.5,0], and make sure you mask out the impossible-to-alter 
-        # values (i.e. z, roll and pitch) and the value we don’t care about (i.e. yaw). Thus we need a mask of [1,1,0,0,0,0]:
+        # values (i.e. z, roll and pitch) and the value we don't care about (i.e. yaw). Thus we need a mask of [1,1,0,0,0,0]:
         # Hint: Try one or more of the inverse kinematics solvers in RobotKinematics.py, in this form "result = robot.ikine(T)",
         # E.g. robot.ikine_LM(transl([-0.75, -0.5, 0]))
         new_q = robot.q
-        new_q = robot.ikine_LM(transl([-0.75, -0.5, 0]), q0= new_q, mask= [1, 1, 0, 0, 0, 0]).q
+        new_q = robot.ikine_LM(transl([-0.75, -0.5, 0]), q0=new_q, mask=[1, 1, 0, 0, 0, 0]).q
 
         # 1.7) Plot the new joint state and check how close it got to the [x, y] in the goal transform (i.e. transl(-0.75,-0.5,0))
         # We will do this part of the exercise in the Swift simulator
         env = swift.Swift()
         env.launch(realtime=True)
+        
+        # Wait for Swift to fully initialize
+        time.sleep(2)
+        
         env.add(robot)                               # Add robot to environment
         env.set_camera_pose([2, -2, 2], [0, 0, 0])   # set camera (position, look-at)
 
+        # Set robot to initial position first and force update
+        robot.q = new_q
+        env.step(0.1)  # Give time for initial positioning
+        time.sleep(1)  # Wait for rendering
+
         print("Fkine solution:\n", robot.fkine(new_q).A)
+        print("Swift should now show the robot. Check that the time is advancing.")
         input("Enter to continue\n")
 
         # 1.8) Go through a loop using the previous joint as the guess to draw a line from [-0.75,-0.5,0] to [-0.75,0.5,0] 
@@ -132,22 +139,30 @@ class Lab4Exercises:
         # where each loop iteration is start + iteration*step, starting from iteration = 0, and not including the stop value.
         # So to loop through y = -0.5 to 0.5, you may try start = -0.5, step = ?, stop = 0.5 + step, try different values for the step!
         # E.g. start = -0.5, stop = 0.5 + 0.25, step = 0.25: iterations = -0.5, -0.25, 0, 0.25, 0.5
-        for y in np.arange(-0.5, 0.51, 0.1):
+        print("Starting line drawing animation...")
+        for i, y in enumerate(np.arange(-0.5, 0.51, 0.05)):  # Smaller step for smoother animation
+            print(f"Moving to point {i+1}: y = {y:.2f}")  # Debug output
             # Hint: Get joint state for robot end effector at desired location using ikine_LM and update robot.q with joint state
             # Hint: As a default, using the current joint state as 'q0' is a good option when the point being moved to is close to the current position
             new_q = robot.ikine_LM(transl([-0.75, y, 0]), q0=robot.q, mask=[1, 1, 0, 0, 0, 0]).q
             robot.q = new_q
-            env.step(0.01)
-
+            
+            # Force Swift to update the robot position
+            env.step()
+            time.sleep(0.1)  # Wait for rendering
+            
             ee_pos = robot.fkine(new_q)
             # Plot a red sphere at the end-effector location
             new_point = Sphere(radius=0.05, color=[1.0, 0.0, 0.0, 1.0])     # Color = RGBA
-            new_point.T = ee_pos.A                                             # Set the 4x4 transformation matrix encoding the sphere's pose
+            new_point.T = ee_pos.A                                          # Set the 4x4 transformation matrix encoding the sphere's pose
             env.add(new_point)                                              # Add sphere to the environment
             line.append(new_point)                                          # Append sphere to a list to track number and ID for removal
 
+            # Another step to ensure everything updates
             env.step()
-            time.sleep(0.25)
+            time.sleep(0.2)  # Longer pause to see animation clearly
+            
+        print("Line drawing complete!")
 
         input("Press enter to continue to 1.10")
 
@@ -158,31 +173,35 @@ class Lab4Exercises:
         env.set_camera_pose([2, 2, 2], [0, 0, 0])   # set camera (position, look-at)
 
 
-        # 1.10) Using ikine to get the newQ and fkine to determine the actual point, move the robot to “draw” a circle around it with a radius of 0.5m
+        # 1.10) Using ikine to get the newQ and fkine to determine the actual point, move the robot to "draw" a circle around it with a radius of 0.5m
         # Hint: Two methods:
         # 1. Draw two semicircles using for loops - can calculate y by looping through x and using equation of a semicircle
         # 2. Loop through one angular revolution, at each step calculate x, y using trigonometry
-        # Hint: Use np.linspace(0, 2*np.pi, num=100) to get 100 points around the circle
-        for theta in np.linspace(0, 2*np.pi, num=100):
-            x = -0.75 + 0.5 * np.cos(theta)
-            y = 0.5 * np.sin(theta)
-            new_q = robot.ikine_LM(transl([x, y, 0
-            ]), q0=robot.q, mask=[1, 1, 0, 0, 0, 0]).q
+        print("Starting circle drawing animation...")
+        for i, angle in enumerate(np.arange(0, 2*pi + 0.2, 0.2)):
+            print(f"Circle point {i+1}: angle = {angle:.2f} radians")
+            # Using trigonometry to calculate circle points
+            x = 0.5 * np.cos(angle)
+            y = 0.5 * np.sin(angle)
+            
+            new_q = robot.ikine_LM(transl([x, y, 0]), q0=robot.q, mask=[1, 1, 0, 0, 0, 0]).q
             robot.q = new_q
-            env.step(0.01)
-            ee_pos = robot.fkine(new_q)
-            new_point = Sphere(radius=0.05, color=[1.0, 0, 0.0, 1.0])  # Color = RGBA
-            new_point.T = ee_pos.A  # Set the 4x4 transformation matrix encoding
-            env.add(new_point)  # Add sphere to the environment
-            line.append(new_point)  # Append sphere to a list to track number and ID for
-            # removal
+            
+            # Force Swift to update
             env.step()
-            time.sleep(0.05)
+            time.sleep(0.1)
 
+            ee_pos = robot.fkine(new_q)
+            # Plot a blue sphere at the end-effector location
+            new_point = Sphere(radius=0.03, color=[0.0, 0.0, 1.0, 1.0])     # Blue color
+            new_point.T = ee_pos.A
+            env.add(new_point)
+            line.append(new_point)
 
-        # for ... in ...:
-        #     pass
-
+            env.step()
+            time.sleep(0.1)
+            
+        print("Circle drawing complete!")
 
         input("Press enter to continue to 1.11")
 
@@ -206,8 +225,9 @@ class Lab4Exercises:
         pen_mesh = Mesh(filename=dae_path)
 
         # 1.13) Set pen transform to be at robot end-effector, translate along Z by 0.1m
-        # pen_mesh.T = p3.fkine(...).A @ transl(..., ..., ...)
-        pen_mesh.T = p3.fkine(p3.q).A @ transl(0, 0, 0.1)
+        # Hint: Use the fkine method to get the end-effector pose and then apply a translation along Z
+        # pen_mesh.T = p3.fkine(p3.q).A @ transl(0, 0, 0.1)  # Set pen position at end-effector,
+        pen_mesh.T = p3.fkine(...).A @ transl(..., ..., ...)
         # Add pen to environment
         env.add(pen_mesh)
         env.set_camera_pose([3, 3, 2], [0, 0, 0])  # (position, look-at)
@@ -216,13 +236,13 @@ class Lab4Exercises:
         for i in np.arange(-pi/4, pi/4+0.01, 0.01):
             p3.q = [i,i,i]
             env.step(0.01)
-            ee_pos = p3.fkine(p3.q).A                  # Get the position of the end-effector
-            pen_mesh.T = ee_pos            # Set the pose of the pen mesh
+            ee_pos = ...                # Get the position of the end-effector
+            pen_mesh.T = ...            # Set the pose of the pen mesh
 
             # Create a red sphere with radius 0.025m at each point, set it to the end-effector location
-            # new_point = ...
+            new_point = ...
             new_point = Sphere(radius=0.025, color=[1.0, 0.0, 0.0, 1.0])
-            new_point.T = ee_pos  # Set the position of the sphere to the end-effector position
+            new_point.T = ...
             env.add(new_point)
 
             env.step(0.05)
