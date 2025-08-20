@@ -55,6 +55,7 @@ class Lab2Solution:
         tr_end = transl([0,0,10]) @ trotx(-30*pi/180)
         tranimate_custom(tr_start, tr_end, speed=speed)
         self.display_orientation_text(tr_end) # 1.10)
+        
         # 1.3
         tr_start = tr_end
         tr_end = transl([0,2,10]) @ trotx(-30 * pi/180)
